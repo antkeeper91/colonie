@@ -1,0 +1,20 @@
+{
+  "name": "AntKeep Pro",
+  "short_name": "AntKeep",
+  "description": "Gestione professionale delle colonie di formiche — 100% offline",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "it",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

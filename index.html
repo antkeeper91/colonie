@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="AntKeep Pro — analisi e gestione colonie offline-first" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AntKeep" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>AntKeep Pro</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icons/icon.svg" />
+  <link rel="stylesheet" href="css/styles.css?v=ios2" />
+  <script type="importmap">
+  {
+    "imports": {
+      "dexie": "https://cdn.jsdelivr.net/npm/dexie@4.0.11/dist/dexie.mjs",
+      "chart.js/auto": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/auto/+esm"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1 class="brand-name">AntKeep Pro</h1>
+      </div>
+      <button type="button" id="theme-toggle" class="icon-btn" aria-label="Cambia tema">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+          <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main id="view-root" class="view-root" role="main" aria-live="polite"></main>
+
+    <nav class="bottom-nav" aria-label="Navigazione principale">
+      <button type="button" class="nav-item" data-view="dashboard" data-route="#/dashboard">
+        <span class="nav-emoji" aria-hidden="true">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button type="button" class="nav-item" data-view="colonies" data-route="#/colonies">
+        <span class="nav-emoji" aria-hidden="true">🐜</span>
+        <span class="nav-label">Colonie</span>
+      </button>
+      <button type="button" class="nav-item" data-view="encyclopedia" data-route="#/encyclopedia">
+        <span class="nav-emoji" aria-hidden="true">📖</span>
+        <span class="nav-label">Enciclopedia</span>
+      </button>
+      <button type="button" class="nav-item" data-view="settings" data-route="#/settings">
+        <span class="nav-emoji" aria-hidden="true">⚙️</span>
+        <span class="nav-label">Impostazioni</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="js/app.js?v=ios2"></script>
+</body>
+</html>

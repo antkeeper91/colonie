@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="AntKeep Pro">
+  <rect width="128" height="128" rx="28" fill="#0f1419"/>
+  <circle cx="44" cy="70" r="10" fill="#3d9b6e"/>
+  <circle cx="68" cy="52" r="12" fill="#4fb37f"/>
+  <circle cx="92" cy="66" r="9" fill="#3d9b6e"/>
+  <path d="M54 64c8-10 16-16 28-18M80 58c-4 10-10 16-20 20" fill="none" stroke="#7ed9a8" stroke-width="4" stroke-linecap="round"/>
+</svg>
