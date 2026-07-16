@@ -1,5 +1,5 @@
 /**
- * ⚙️ Impostazioni — Modulo 4 Backup (export / import JSON)
+ * ⚙️ Impostazioni — Backup JSON + export CSV scientifici
  */
 
 import {
@@ -8,6 +8,7 @@ import {
   importBackupOverwrite,
   readBackupWithFileReader,
 } from './backup.js';
+import { exportScientificCsvBundle } from './export-csv.js';
 import { navigate } from './router.js';
 import { confirmDialog, el, toast } from './ui.js';
 
@@ -26,10 +27,10 @@ export async function renderSettings(root) {
       <div class="panel" id="backup-card">
         <h3>Backup dati</h3>
         <p class="muted settings-copy">
-          Esporta colonie, log e pasti nutrizionali in un file
+          Esporta colonie, log, pasti e tabelle laboratorio in
           <code>${BACKUP_FILENAME}</code>.
           L’importazione <strong>cancella</strong> i dati attuali e li sostituisce
-          con quelli del file (transazione Dexie: <code>clear</code> + <code>bulkAdd</code>).
+          (transazione Dexie: <code>clear</code> + <code>bulkAdd</code>).
         </p>
 
         <div class="settings-actions">
@@ -51,6 +52,18 @@ export async function renderSettings(root) {
       </div>
 
       <div class="panel">
+        <h3>Export CSV scientifici</h3>
+        <p class="muted settings-copy">
+          Scarica CSV separati per colonie, timeline, pasti, biologia, clima,
+          salute, riproduzione, setup e media (utile per fogli di calcolo / R).
+        </p>
+        <button type="button" class="btn btn-primary" id="btn-export-csv">
+          Esporta CSV
+        </button>
+        <p id="csv-status" class="meta-line" aria-live="polite"></p>
+      </div>
+
+      <div class="panel">
         <h3>Informazioni</h3>
         <ul class="kv-list">
           <li><span>App</span><strong>AntKeep Pro</strong></li>
@@ -66,30 +79,43 @@ export async function renderSettings(root) {
   );
 
   const status = root.querySelector('#backup-status');
+  const csvStatus = root.querySelector('#csv-status');
   const fileInput = root.querySelector('#import-backup-file');
 
   root.querySelector('[data-go-colonies]')?.addEventListener('click', () => {
     navigate('#/colonies');
   });
 
-  // ── Esporta ────────────────────────────────────────────────
   root.querySelector('#btn-export-backup').addEventListener('click', async () => {
     try {
       const result = await exportBackupToFile();
-      const msg = `Backup esportato: ${result.filename}\n${result.meta.colonies} colonie · ${result.meta.logs} log · ${result.meta.feeding_logs} pasti.`;
-      status.textContent = msg.replace(/\n/g, ' · ');
+      const m = result.meta;
+      const msg = `Backup: ${result.filename} · ${m.colonies} colonie · ${m.logs} log · ${m.feeding_logs} pasti · lab ${(m.biology_logs || 0) + (m.climate_logs || 0) + (m.health_logs || 0)} record`;
+      status.textContent = msg;
       toast('Backup scaricato');
-      alert(msg);
     } catch (err) {
       console.error(err);
       const message = err.message || 'Esportazione fallita';
       status.textContent = message;
       toast(message, 'error');
-      alert(`Errore esportazione:\n${message}`);
     }
   });
 
-  // ── Importa: bottone → input file nascosto ─────────────────
+  root.querySelector('#btn-export-csv').addEventListener('click', async () => {
+    try {
+      csvStatus.textContent = 'Preparazione CSV…';
+      const counts = await exportScientificCsvBundle();
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      csvStatus.textContent = `Esportati ${total} record su ${Object.keys(counts).length} tabelle`;
+      toast('CSV scaricati');
+    } catch (err) {
+      console.error(err);
+      const message = err.message || 'Export CSV fallito';
+      csvStatus.textContent = message;
+      toast(message, 'error');
+    }
+  });
+
   root.querySelector('#btn-import-backup').addEventListener('click', () => {
     fileInput.click();
   });
@@ -104,12 +130,20 @@ export async function renderSettings(root) {
       const colonyCount = payload.data.colonies.length;
       const logCount = payload.data.logs.length;
       const feedCount = (payload.data.feeding_logs || []).length;
+      const labCount = [
+        'biology_logs',
+        'climate_logs',
+        'health_logs',
+        'reproduction_logs',
+        'setup_logs',
+        'media_items',
+      ].reduce((n, k) => n + (payload.data[k]?.length || 0), 0);
 
       const ok = await confirmDialog({
         title: 'Importare e sovrascrivere?',
         bodyHtml: `<p>Stai per <strong>sostituire tutti i dati locali</strong> con il contenuto di
           <strong>${escapeHtml(file.name)}</strong>.</p>
-          <p class="muted">${colonyCount} colonie · ${logCount} log · ${feedCount} pasti.</p>
+          <p class="muted">${colonyCount} colonie · ${logCount} log · ${feedCount} pasti · ${labCount} lab.</p>
           <p>Operazione irreversibile (salvo un export precedente).</p>`,
         confirmLabel: 'Sovrascrivi dati',
         danger: true,
@@ -117,19 +151,15 @@ export async function renderSettings(root) {
       if (!ok) return;
 
       const imported = await importBackupOverwrite(payload);
-      const msg = `Importazione completata.\n${imported.colonies} colonie · ${imported.logs} log · ${imported.feeding_logs} pasti.`;
-      status.textContent = msg.replace(/\n/g, ' · ');
+      const msg = `Import: ${imported.colonies} colonie · ${imported.logs} log · ${imported.feeding_logs} pasti`;
+      status.textContent = msg;
       toast('Dati ripristinati');
-      alert(msg);
-
-      // Ricarica la lista colonie per mostrare i dati appena importati
       navigate('#/colonies');
     } catch (err) {
       console.error(err);
       const message = err.message || 'Importazione fallita';
       status.textContent = message;
       toast(message, 'error');
-      alert(`Errore importazione:\n${message}`);
     }
   });
 }

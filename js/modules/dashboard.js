@@ -37,8 +37,8 @@ export async function renderDashboard(root, { colonyScope = 'all' } = {}) {
     <section class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Centro di controllo</p>
-          <h2>Dashboard analitica</h2>
+          <p class="eyebrow">Lab mirmecologico</p>
+          <h2>Dashboard</h2>
         </div>
         <button type="button" class="btn btn-primary" data-go="#/colonies/new">+ Nuova colonia</button>
       </header>
@@ -108,7 +108,7 @@ export async function renderDashboard(root, { colonyScope = 'all' } = {}) {
 
       <div class="stat-grid status-strip">
         <article class="stat-card compact"><span class="stat-label">Solo regina</span><strong>${stats.byStatus.queen_only}</strong></article>
-        <article class="stat-card compact"><span class="stat-label">Fondazione</span><strong>${stats.byStatus.founding}</strong></article>
+        <article class="stat-card compact"><span class="stat-label">Uova / fond.</span><strong>${(stats.byStatus.eggs || 0) + (stats.byStatus.founding || 0) + (stats.byStatus.first_workers || 0)}</strong></article>
         <article class="stat-card compact"><span class="stat-label">Stabilite</span><strong>${stats.byStatus.established}</strong></article>
         <article class="stat-card compact"><span class="stat-label">Enciclopedia</span><strong>${enc.count}</strong></article>
       </div>

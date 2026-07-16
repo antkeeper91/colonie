@@ -1,25 +1,44 @@
-import { listSubfamilies, loadEncyclopedia, searchSpecies, findSpecies } from './encyclopedia.js';
+import {
+  listGenera,
+  listSubfamilies,
+  listTags,
+  loadEncyclopedia,
+  searchSpecies,
+  findSpecies,
+} from './encyclopedia.js';
 import { navigate } from './router.js';
 import { el, escapeHtml } from './ui.js';
 
 export async function renderEncyclopediaList(root) {
-  const [data, subfamilies] = await Promise.all([loadEncyclopedia(), listSubfamilies()]);
+  const [data, subfamilies, genera, tags] = await Promise.all([
+    loadEncyclopedia(),
+    listSubfamilies(),
+    listGenera(),
+    listTags(),
+  ]);
 
   root.appendChild(
     el(`
     <section class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Modulo B</p>
+          <p class="eyebrow">Atlante</p>
           <h2>Enciclopedia</h2>
           <p class="muted">${data.meta.species_count} schede · offline</p>
         </div>
       </header>
 
-      <div class="panel filters-bar">
+      <div class="panel filters-bar filters-bar-adv">
         <label class="field grow">
           <span>Cerca</span>
           <input type="search" id="enc-q" placeholder="Nome scientifico, comune, tag..." />
+        </label>
+        <label class="field">
+          <span>Genere</span>
+          <select id="enc-genus">
+            <option value="">Tutti</option>
+            ${genera.map((g) => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('')}
+          </select>
         </label>
         <label class="field">
           <span>Sottofamiglia</span>
@@ -28,32 +47,60 @@ export async function renderEncyclopediaList(root) {
             ${subfamilies.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
           </select>
         </label>
+        <label class="field">
+          <span>Difficoltà</span>
+          <select id="enc-diff">
+            <option value="">Tutte</option>
+            <option value="1">1 · Principiante</option>
+            <option value="2">2 · Agevole</option>
+            <option value="3">3 · Intermedio</option>
+            <option value="4">4 · Avanzato</option>
+            <option value="5">5 · Esperto</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Tag</span>
+          <select id="enc-tag">
+            <option value="">Tutti</option>
+            ${tags.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+          </select>
+        </label>
       </div>
 
+      <p id="enc-count" class="meta-line" aria-live="polite"></p>
       <div id="enc-results" class="species-grid"></div>
     </section>
   `)
   );
 
   const results = root.querySelector('#enc-results');
+  const countEl = root.querySelector('#enc-count');
   const qInput = root.querySelector('#enc-q');
+  const genusInput = root.querySelector('#enc-genus');
   const subInput = root.querySelector('#enc-sub');
+  const diffInput = root.querySelector('#enc-diff');
+  const tagInput = root.querySelector('#enc-tag');
 
   async function refresh() {
     const rows = await searchSpecies({
       q: qInput.value,
+      genus: genusInput.value || undefined,
       subfamily: subInput.value || undefined,
+      difficulty: diffInput.value ? Number(diffInput.value) : undefined,
+      tag: tagInput.value || undefined,
     });
+    countEl.textContent = `${rows.length} specie`;
     results.innerHTML = rows
       .map(
         (s) => `
-      <article class="species-card" data-id="${escapeHtml(s.id)}">
+      <article class="species-card viz-card" data-id="${escapeHtml(s.id)}">
         <div class="species-card-top">
           <h3><em>${escapeHtml(s.scientific_name)}</em></h3>
           <span class="diff diff-${s.difficulty}">D${s.difficulty}</span>
         </div>
         <p class="muted">${escapeHtml(s.native_range || 'Range n/d')}</p>
         <p class="meta-line">${escapeHtml(s.foundation)} · ${escapeHtml(s.subfamily)}</p>
+        ${(s.tags || []).length ? `<p class="enc-tags">${(s.tags || []).slice(0, 4).map((t) => `<span>${escapeHtml(t)}</span>`).join('')}</p>` : ''}
       </article>`
       )
       .join('');
@@ -63,8 +110,10 @@ export async function renderEncyclopediaList(root) {
     });
   }
 
-  qInput.addEventListener('input', () => refresh());
-  subInput.addEventListener('change', () => refresh());
+  [qInput, genusInput, subInput, diffInput, tagInput].forEach((elInput) => {
+    elInput.addEventListener('input', () => refresh());
+    elInput.addEventListener('change', () => refresh());
+  });
   await refresh();
 }
 
@@ -139,6 +188,7 @@ export async function renderSpeciesDetail(root, speciesId) {
           </ul>
           ${s.behavior?.notes ? `<p>${escapeHtml(s.behavior.notes)}</p>` : ''}
           ${s.husbandry_notes ? `<h3>Note allevamento</h3><p>${escapeHtml(s.husbandry_notes)}</p>` : ''}
+          ${(s.tags || []).length ? `<h3>Tag</h3><p class="enc-tags">${(s.tags || []).map((t) => `<span>${escapeHtml(t)}</span>`).join('')}</p>` : ''}
           <p class="meta-line">Range: ${escapeHtml(s.native_range || '—')}
           ${s.size?.queen_mm ? ` · Regina ${escapeHtml(s.size.queen_mm)} mm` : ''}
           ${s.size?.worker_mm ? ` · Operaie ${escapeHtml(s.size.worker_mm)} mm` : ''}</p>

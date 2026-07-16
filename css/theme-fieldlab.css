@@ -1,0 +1,359 @@
+/* Field Lab theme overlay — modern, inviting, scientific */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&display=swap');
+
+:root {
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+
+  --bg: #070b09;
+  --bg-elevated: #121a16;
+  --bg-muted: #1a2420;
+  --separator: rgba(120, 140, 128, 0.22);
+  --border: rgba(120, 140, 128, 0.18);
+  --text: #f3f6f2;
+  --text-muted: #8b9a90;
+  --text-secondary: #b7c4ba;
+
+  --accent: #6fd39a;
+  --accent-soft: rgba(111, 211, 154, 0.14);
+  --accent-warm: #e8a54b;
+  --accent-warm-soft: rgba(232, 165, 75, 0.16);
+  --accent-blue: #7eb8ff;
+
+  --badge-queen: rgba(126, 184, 255, 0.16);
+  --badge-queen-text: #9cc9ff;
+  --badge-founding: rgba(232, 165, 75, 0.18);
+  --badge-founding-text: #f0c078;
+  --badge-established: rgba(111, 211, 154, 0.16);
+  --badge-established-text: #6fd39a;
+
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --shadow-card: 0 10px 32px rgba(0, 0, 0, 0.32);
+  --nav-glass: rgba(12, 18, 15, 0.78);
+  --header-glass: rgba(7, 11, 9, 0.72);
+  --mesh-a: rgba(111, 211, 154, 0.1);
+  --mesh-b: rgba(232, 165, 75, 0.08);
+}
+
+[data-theme="light"] {
+  --bg: #eef3ef;
+  --bg-elevated: #ffffff;
+  --bg-muted: #e2ebe5;
+  --text: #122018;
+  --text-muted: #5f7266;
+  --text-secondary: #3d4f44;
+  --accent: #1f8f5a;
+  --accent-soft: rgba(31, 143, 90, 0.12);
+  --accent-warm: #c4842e;
+  --accent-blue: #2f6fed;
+  --nav-glass: rgba(255, 255, 255, 0.84);
+  --header-glass: rgba(238, 243, 239, 0.88);
+  --mesh-a: rgba(31, 143, 90, 0.07);
+  --mesh-b: rgba(196, 132, 46, 0.05);
+  --shadow-card: 0 8px 24px rgba(18, 32, 24, 0.07);
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(900px 480px at 12% -8%, var(--mesh-a), transparent 55%),
+    radial-gradient(700px 420px at 100% 8%, var(--mesh-b), transparent 50%),
+    var(--bg);
+}
+
+h1, h2, .brand-name, .page-header h2, .md-sheet-title, .md-days-value {
+  font-family: var(--font-display);
+}
+
+.page-header h2 {
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.eyebrow {
+  color: var(--accent-warm);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8ae0ae 0%, #6fd39a 45%, #4fb87e 100%);
+  color: #062816;
+  box-shadow: 0 8px 22px rgba(111, 211, 154, 0.28);
+}
+
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, #2aa86a 0%, #1f8f5a 100%);
+  color: #fff;
+}
+
+.bottom-nav {
+  background: var(--nav-glass);
+  border-top: 0.5px solid var(--separator);
+}
+
+.nav-item.is-active {
+  color: var(--accent);
+}
+
+.brand-mark {
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 30% 30%, #f0c078 0 14%, transparent 15%),
+    linear-gradient(145deg, #6fd39a, #1d5c3c);
+}
+
+/* ─── Modern colony photo cards ─── */
+
+.colony-grid {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 14px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.colony-grid > li + li {
+  border-top: none !important;
+}
+
+.colony-card.media-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+
+.colony-card.media-card:active {
+  transform: scale(0.985);
+}
+
+.colony-cover {
+  position: relative;
+  height: 148px;
+  overflow: hidden;
+}
+
+.colony-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.colony-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.colony-cover-fallback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 70% 30%, rgba(255,255,255,0.08), transparent 40%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.12)' stroke-width='2'%3E%3Ccircle cx='34' cy='62' r='8'/%3E%3Ccircle cx='58' cy='44' r='10'/%3E%3Ccircle cx='84' cy='58' r='7'/%3E%3Cpath d='M42 56c10-12 20-18 34-20M74 50c-4 10-10 16-20 20'/%3E%3C/g%3E%3C/svg%3E")
+    center 58% / 88px no-repeat;
+}
+
+.colony-cover-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.colony-card-body {
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.colony-card-body h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.colony-card .species-line {
+  margin: 0;
+  font-size: 14px;
+}
+
+.colony-card .meta-line {
+  margin: 0;
+}
+
+.colony-card .btn-open {
+  margin-top: 8px;
+  justify-self: start;
+}
+
+/* Empty state inviting */
+.empty-hero {
+  padding: 28px 20px;
+  text-align: center;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(160deg, var(--accent-warm-soft), transparent 42%),
+    var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.empty-hero h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+/* Detail sheet hero photo */
+.md-hero {
+  position: relative;
+  margin: 0 16px 12px;
+  height: 180px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.md-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.md-hero-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.md-hero-actions {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.md-photo-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(10, 14, 12, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+.md-root,
+.md-sheet {
+  background:
+    radial-gradient(700px 320px at 20% 0%, var(--mesh-a), transparent 50%),
+    var(--bg);
+}
+
+.md-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.md-days-card {
+  background:
+    linear-gradient(155deg, var(--accent-soft), transparent 50%),
+    linear-gradient(210deg, var(--accent-warm-soft), var(--bg-elevated) 55%);
+  border: 1px solid var(--border);
+}
+
+.md-days-value {
+  color: var(--accent);
+  text-shadow: 0 8px 30px rgba(111, 211, 154, 0.25);
+}
+
+.md-segmented {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+}
+
+.md-seg.is-active {
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  color: var(--accent);
+}
+
+/* Encyclopedia visual cards */
+.species-grid {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 12px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.species-grid > .species-card + .species-card {
+  border-top: none !important;
+}
+
+.species-card.viz-card {
+  position: relative;
+  padding: 16px 16px 16px 18px !important;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.species-card.viz-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--accent-warm), var(--accent));
+}
+
+.species-card.viz-card h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.lab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-warm-soft);
+  color: var(--accent-warm);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 640px) {
+  .colony-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .species-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}

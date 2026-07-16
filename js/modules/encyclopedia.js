@@ -53,7 +53,7 @@ export async function findSpecies(query) {
 }
 
 /**
- * @param {{ q?: string, subfamily?: string, tag?: string, maxDifficulty?: number }} [filters]
+ * @param {{ q?: string, subfamily?: string, genus?: string, tag?: string, difficulty?: number, maxDifficulty?: number }} [filters]
  */
 export async function searchSpecies(filters = {}) {
   const { species } = await loadEncyclopedia();
@@ -61,7 +61,9 @@ export async function searchSpecies(filters = {}) {
 
   return species.filter((s) => {
     if (filters.subfamily && s.subfamily !== filters.subfamily) return false;
+    if (filters.genus && genusOf(s) !== filters.genus) return false;
     if (filters.tag && !(s.tags || []).includes(filters.tag)) return false;
+    if (filters.difficulty != null && s.difficulty !== Number(filters.difficulty)) return false;
     if (filters.maxDifficulty != null && s.difficulty > filters.maxDifficulty) return false;
     if (!q) return true;
     const hay = normalize(
@@ -74,6 +76,25 @@ export async function searchSpecies(filters = {}) {
 export async function listSubfamilies() {
   const { species } = await loadEncyclopedia();
   return [...new Set(species.map((s) => s.subfamily).filter(Boolean))].sort();
+}
+
+export async function listGenera() {
+  const { species } = await loadEncyclopedia();
+  return [...new Set(species.map(genusOf).filter(Boolean))].sort();
+}
+
+export async function listTags() {
+  const { species } = await loadEncyclopedia();
+  const tags = new Set();
+  for (const s of species) {
+    for (const t of s.tags || []) tags.add(t);
+  }
+  return [...tags].sort();
+}
+
+function genusOf(s) {
+  const name = String(s.scientific_name || '').trim();
+  return name.split(/\s+/)[0] || '';
 }
 
 export async function getEncyclopediaStats() {

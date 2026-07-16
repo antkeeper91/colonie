@@ -77,13 +77,22 @@ export function confirmDialog(opts) {
 
 export const STATUS_LABELS = {
   queen_only: 'Solo regina',
+  eggs: 'Uova',
+  first_workers: 'Prime operaie',
   founding: 'Fondazione',
   established: 'Stabilita',
 };
 
 /** Pastel iOS badge class for colony status */
 export function statusBadgeClass(status) {
-  return `badge badge-${status || 'established'}`;
+  const map = {
+    queen_only: 'badge badge-queen_only',
+    eggs: 'badge badge-founding',
+    first_workers: 'badge badge-founding',
+    founding: 'badge badge-founding',
+    established: 'badge badge-established',
+  };
+  return map[status] || 'badge badge-established';
 }
 
 export const LOG_LABELS = {

@@ -4,31 +4,31 @@
  */
 
 import { db } from '../db.js';
+import { LAB_TABLES } from './lab-data.js';
 
-export const BACKUP_FORMAT_VERSION = 1;
+export const BACKUP_FORMAT_VERSION = 2;
 export const BACKUP_FILENAME = 'antkeep_backup.json';
+
+const CORE_TABLES = ['colonies', 'logs', 'feeding_logs'];
+const ALL_TABLES = [...CORE_TABLES, ...LAB_TABLES];
 
 /**
  * Legge asincronamente tutte le tabelle Dexie e costruisce il payload JSON.
  * @returns {Promise<object>}
  */
 export async function buildBackupPayload() {
-  const [colonies, logs, feeding_logs] = await Promise.all([
-    db.colonies.toArray(),
-    db.logs.toArray(),
-    db.feeding_logs.toArray(),
-  ]);
+  const entries = await Promise.all(
+    ALL_TABLES.map(async (name) => [name, await db.table(name).toArray()])
+  );
+  const data = Object.fromEntries(entries);
+  const meta = Object.fromEntries(entries.map(([k, v]) => [k, v.length]));
 
   return {
     app: 'AntKeep Pro',
     format_version: BACKUP_FORMAT_VERSION,
     exported_at: new Date().toISOString(),
-    meta: {
-      colonies: colonies.length,
-      logs: logs.length,
-      feeding_logs: feeding_logs.length,
-    },
-    data: { colonies, logs, feeding_logs },
+    meta,
+    data,
   };
 }
 
@@ -105,6 +105,12 @@ export function validateBackupPayload(payload) {
   if (feeding_logs != null && !Array.isArray(feeding_logs)) {
     throw new Error('feeding_logs deve essere un array');
   }
+  for (const name of LAB_TABLES) {
+    const t = payload.data[name];
+    if (t != null && !Array.isArray(t)) {
+      throw new Error(`${name} deve essere un array`);
+    }
+  }
   return true;
 }
 
@@ -115,33 +121,25 @@ export function validateBackupPayload(payload) {
 export async function importBackupOverwrite(payload) {
   validateBackupPayload(payload);
 
-  const colonies = sanitizeRows(payload.data.colonies);
-  const logs = sanitizeRows(payload.data.logs);
-  const feeding_logs = sanitizeRows(
-    Array.isArray(payload.data.feeding_logs) ? payload.data.feeding_logs : []
-  );
+  const bags = {};
+  for (const name of ALL_TABLES) {
+    bags[name] = sanitizeRows(
+      Array.isArray(payload.data[name]) ? payload.data[name] : []
+    );
+  }
 
-  await db.transaction('rw', db.colonies, db.logs, db.feeding_logs, async () => {
-    await db.feeding_logs.clear();
-    await db.logs.clear();
-    await db.colonies.clear();
-
-    if (colonies.length) await db.colonies.bulkAdd(colonies);
-    if (logs.length) await db.logs.bulkAdd(logs);
-    if (feeding_logs.length) await db.feeding_logs.bulkAdd(feeding_logs);
+  await db.transaction('rw', ...ALL_TABLES.map((n) => db.table(n)), async () => {
+    for (const name of ALL_TABLES) {
+      await db.table(name).clear();
+    }
+    for (const name of ALL_TABLES) {
+      if (bags[name].length) await db.table(name).bulkAdd(bags[name]);
+    }
   });
 
-  return {
-    colonies: colonies.length,
-    logs: logs.length,
-    feeding_logs: feeding_logs.length,
-  };
+  return Object.fromEntries(ALL_TABLES.map((n) => [n, bags[n].length]));
 }
 
 function sanitizeRows(rows) {
-  // Conserva gli id così colony_id nei log resta coerente dopo il restore
-  return rows.map((row) => {
-    const copy = { ...row };
-    return copy;
-  });
+  return rows.map((row) => ({ ...row }));
 }

@@ -18,6 +18,7 @@ import {
 import { findSpecies } from './encyclopedia.js';
 import { generateAdvice, renderAdvicePanel } from './advisor.js';
 import { mountFeedingTracker } from './feeding.js';
+import { openColonyDetailShell } from './colony-detail-shell.js';
 import { navigate } from './router.js';
 import {
   LOG_LABELS,
@@ -47,34 +48,47 @@ function formatClimateTag(climate) {
 
 export async function renderColoniesList(root) {
   const colonies = await listColonies();
+  const { placeholderStyle } = await import('./photos.js');
+
   root.appendChild(
     el(`
     <section class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Modulo A</p>
+          <p class="eyebrow">Field lab</p>
           <h2>Le mie colonie</h2>
+          <p class="muted">Archivio fotografico e diario di allevamento</p>
         </div>
-        <button type="button" class="btn btn-primary" id="btn-new-colony">+ Aggiungi</button>
+        <button type="button" class="btn btn-primary" id="btn-new-colony">+ Nuova</button>
       </header>
       ${
         colonies.length === 0
-          ? `<div class="panel"><p class="empty-hint">Nessuna colonia salvata su questo dispositivo.</p></div>`
+          ? `<div class="empty-hero">
+               <span class="lab-chip">Pronto per la prima scheda</span>
+               <h3>Nessuna colonia ancora</h3>
+               <p class="empty-hint">Crea la prima colonia e aggiungi una foto del formicaio per un archivio da ricercatore.</p>
+             </div>`
           : `<ul class="colony-grid">${colonies
-              .map(
-                (c) => `
+              .map((c) => {
+                const cover = c.cover_photo
+                  ? `<img src="${escapeHtml(c.cover_photo)}" alt="" loading="lazy" />`
+                  : `<div class="colony-cover-fallback" style="${placeholderStyle(c.species || c.name)}"></div>`;
+                return `
             <li>
-              <article class="colony-card" data-id="${c.id}">
-                <div class="colony-card-top">
-                  <h3>${escapeHtml(c.name)}</h3>
-                  <span class="${statusBadgeClass(c.status)}" data-status="${escapeHtml(c.status)}">${escapeHtml(STATUS_LABELS[c.status] || c.status)}</span>
+              <article class="colony-card media-card" data-id="${c.id}">
+                <div class="colony-cover">
+                  ${cover}
+                  <span class="colony-cover-badge ${statusBadgeClass(c.status)}" data-status="${escapeHtml(c.status)}">${escapeHtml(STATUS_LABELS[c.status] || c.status)}</span>
                 </div>
-                <p class="species-line"><em>${escapeHtml(c.species)}</em></p>
-                <p class="meta-line">Acquisita ${escapeHtml(formatDate(c.acquisition_date))}</p>
-                <button type="button" class="btn btn-ghost btn-sm btn-open">Apri</button>
+                <div class="colony-card-body">
+                  <h3>${escapeHtml(c.name)}</h3>
+                  <p class="species-line"><em>${escapeHtml(c.species)}</em></p>
+                  <p class="meta-line">Dal ${escapeHtml(formatDate(c.acquisition_date || c.created_at))}</p>
+                  <button type="button" class="btn btn-ghost btn-sm btn-open">Apri scheda</button>
+                </div>
               </article>
-            </li>`
-              )
+            </li>`;
+              })
               .join('')}</ul>`
       }
     </section>
@@ -83,7 +97,22 @@ export async function renderColoniesList(root) {
 
   root.querySelector('#btn-new-colony')?.addEventListener('click', () => navigate('#/colonies/new'));
   root.querySelectorAll('.colony-card').forEach((card) => {
-    card.querySelector('.btn-open').addEventListener('click', () => navigate(`#/colonies/${card.dataset.id}`));
+    const open = async () => {
+      const id = Number(card.dataset.id);
+      const colony = colonies.find((c) => c.id === id);
+      await openColonyDetailShell(colony, {
+        onClose: async () => {
+          const { clear } = await import('./ui.js');
+          clear(root);
+          await renderColoniesList(root);
+        },
+      });
+    };
+    card.querySelector('.btn-open')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      open();
+    });
+    card.addEventListener('click', () => open());
   });
 }
 

@@ -294,7 +294,12 @@ function buildAdviceFromTargets(colony, speciesData, targets, readings, now = ne
   }
 
   // ── Foundation rule ─────────────────────────────────────────
-  const foundingLike = colony.status === 'queen_only' || colony.status === 'founding';
+  const colonyStatus = colony.status;
+  const foundingLike =
+    colonyStatus === 'queen_only' ||
+    colonyStatus === 'eggs' ||
+    colonyStatus === 'first_workers' ||
+    colonyStatus === 'founding';
   if (foundingLike && targets.foundation_type === 'claustral') {
     tips.push({
       id: 'founding',

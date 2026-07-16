@@ -5,28 +5,17 @@
 
 import Dexie from 'dexie';
 
-/** @typedef {'queen_only' | 'founding' | 'established'} ColonyStatus */
+/** @typedef {'queen_only' | 'eggs' | 'first_workers' | 'founding' | 'established'} ColonyStatus */
 /** @typedef {'feeding' | 'growth' | 'observation'} LogType */
 /** @typedef {'carbohydrates' | 'protein_liquid'} FeedingCategory */
+/** @typedef {'low' | 'medium' | 'high'} AcceptanceLevel */
 
 /**
  * Menu nutrizionale di default (Tracker).
- * Focus: carboidrati (mieli/nettari) + liquidi proteici commerciali.
+ * Focus: liquidi proteici commerciali + carboidrati (zuccheri/mieli).
  * Gli insetti vivi NON sono tra le opzioni di default.
  */
 export const FEEDING_MENU = Object.freeze({
-  carbohydrates: {
-    id: 'carbohydrates',
-    label: 'Carboidrati (Mieli/Nettari)',
-    items: [
-      { id: 'honey_diluted', label: 'Miele diluito' },
-      { id: 'nectar', label: 'Nettare / sciroppo' },
-      { id: 'sugar_water', label: 'Acqua zuccherata' },
-      { id: 'agave', label: 'Sciroppo d’agave diluito' },
-      { id: 'fruit_syrup', label: 'Sciroppo di frutta' },
-      { id: 'honeydew', label: 'Melata / honeydew' },
-    ],
-  },
   protein_liquid: {
     id: 'protein_liquid',
     label: 'Liquidi Proteici Commerciali',
@@ -39,13 +28,33 @@ export const FEEDING_MENU = Object.freeze({
       { id: 'custom_protein', label: 'Altra formula commerciale' },
     ],
   },
+  carbohydrates: {
+    id: 'carbohydrates',
+    label: 'Carboidrati (Zuccheri/Mieli)',
+    items: [
+      { id: 'honey_diluted', label: 'Miele diluito' },
+      { id: 'nectar', label: 'Nettare / sciroppo' },
+      { id: 'sugar_water', label: 'Acqua zuccherata' },
+      { id: 'agave', label: 'Sciroppo d’agave diluito' },
+      { id: 'fruit_syrup', label: 'Sciroppo di frutta' },
+      { id: 'honeydew', label: 'Melata / honeydew' },
+    ],
+  },
 });
 
 /** @deprecated use FEEDING_MENU — kept for compat brief */
 export const FEEDING_OPTIONS = FEEDING_MENU;
 
+export const ACCEPTANCE_LEVELS = Object.freeze([
+  { id: 'low', label: 'Bassa', rating: 1 },
+  { id: 'medium', label: 'Media', rating: 2 },
+  { id: 'high', label: 'Alta', rating: 3 },
+]);
+
 export const COLONY_STATUSES = Object.freeze([
   { id: 'queen_only', label: 'Solo regina' },
+  { id: 'eggs', label: 'Uova' },
+  { id: 'first_workers', label: 'Prime operaie' },
   { id: 'founding', label: 'Fondazione' },
   { id: 'established', label: 'Stabilita' },
 ]);
@@ -77,12 +86,30 @@ class AntKeepDB extends Dexie {
       feeding_logs: '++id, colony_id, date, category, item_id, [colony_id+date]',
     });
 
+    this.version(3).stores({
+      colonies: '++id, name, species, status, acquisition_date, quarantine',
+      logs: '++id, colony_id, log_type, date, event_kind, [colony_id+date]',
+      feeding_logs: '++id, colony_id, date, category, item_id, [colony_id+date]',
+      biology_logs: '++id, colony_id, date, [colony_id+date]',
+      climate_logs: '++id, colony_id, date, [colony_id+date]',
+      health_logs: '++id, colony_id, date, issue_type, [colony_id+date]',
+      reproduction_logs: '++id, colony_id, date, event_type, [colony_id+date]',
+      setup_logs: '++id, colony_id, date, action, [colony_id+date]',
+      media_items: '++id, colony_id, date, kind, [colony_id+date]',
+    });
+
     /** @type {Dexie.Table} */
     this.colonies = this.table('colonies');
     /** @type {Dexie.Table} */
     this.logs = this.table('logs');
     /** @type {Dexie.Table} */
     this.feeding_logs = this.table('feeding_logs');
+    this.biology_logs = this.table('biology_logs');
+    this.climate_logs = this.table('climate_logs');
+    this.health_logs = this.table('health_logs');
+    this.reproduction_logs = this.table('reproduction_logs');
+    this.setup_logs = this.table('setup_logs');
+    this.media_items = this.table('media_items');
   }
 }
 
@@ -123,9 +150,10 @@ export async function listColonies() {
 
 /**
  * @param {number} id
- * @param {Partial<{name:string,species:string,acquisition_date:string,status:ColonyStatus}>} patch
+ * @param {Partial<{name:string,species:string,acquisition_date:string,status:ColonyStatus,cover_photo:string|null}>} patch
+ * @param {{ skipTimeline?: boolean }} [opts]
  */
-export async function updateColony(id, patch) {
+export async function updateColony(id, patch, opts = {}) {
   const existing = await getColony(id);
   if (!existing) throw new Error(`Colonia #${id} non trovata`);
 
@@ -137,18 +165,88 @@ export async function updateColony(id, patch) {
     updated_at: new Date().toISOString(),
   };
 
+  if (patch.cover_photo !== undefined) {
+    next.cover_photo = patch.cover_photo;
+  }
+
   validateColonyInput(next);
-  await db.colonies.update(id, next);
+
+  const statusChanged = patch.status != null && patch.status !== existing.status;
+
+  await db.transaction('rw', db.colonies, db.logs, async () => {
+    await db.colonies.update(id, next);
+    if (statusChanged && !opts.skipTimeline) {
+      const fromLabel = statusLabel(existing.status);
+      const toLabel = statusLabel(next.status);
+      await db.logs.add({
+        colony_id: id,
+        log_type: 'observation',
+        date: new Date().toISOString(),
+        details: `Stato biologico: ${fromLabel} → ${toLabel}`,
+        event_kind: 'status_change',
+        from_status: existing.status,
+        to_status: next.status,
+        population: null,
+        climate: null,
+        feeding: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+  });
+
   return getColony(id);
+}
+
+export async function setColonyCoverPhoto(colonyId, dataUrl) {
+  return updateColony(colonyId, { cover_photo: dataUrl }, { skipTimeline: true });
+}
+
+export async function clearColonyCoverPhoto(colonyId) {
+  return updateColony(colonyId, { cover_photo: null }, { skipTimeline: true });
+}
+
+export function statusLabel(statusId) {
+  return COLONY_STATUSES.find((s) => s.id === statusId)?.label || statusId;
+}
+
+/** Giorni interi dalla registrazione (created_at) o data acquisizione. */
+export function daysSinceRegistration(colony, now = new Date()) {
+  const raw = colony?.created_at || colony?.acquisition_date;
+  if (!raw) return 0;
+  const start = new Date(raw);
+  if (Number.isNaN(start.getTime())) return 0;
+  const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((b - a) / 86400000));
 }
 
 /** @param {number} id */
 export async function deleteColony(id) {
-  await db.transaction('rw', db.colonies, db.logs, db.feeding_logs, async () => {
-    await db.logs.where('colony_id').equals(id).delete();
-    await db.feeding_logs.where('colony_id').equals(id).delete();
-    await db.colonies.delete(id);
-  });
+  await db.transaction(
+    'rw',
+    db.colonies,
+    db.logs,
+    db.feeding_logs,
+    db.biology_logs,
+    db.climate_logs,
+    db.health_logs,
+    db.reproduction_logs,
+    db.setup_logs,
+    db.media_items,
+    async () => {
+      await Promise.all([
+        db.logs.where('colony_id').equals(id).delete(),
+        db.feeding_logs.where('colony_id').equals(id).delete(),
+        db.biology_logs.where('colony_id').equals(id).delete(),
+        db.climate_logs.where('colony_id').equals(id).delete(),
+        db.health_logs.where('colony_id').equals(id).delete(),
+        db.reproduction_logs.where('colony_id').equals(id).delete(),
+        db.setup_logs.where('colony_id').equals(id).delete(),
+        db.media_items.where('colony_id').equals(id).delete(),
+      ]);
+      await db.colonies.delete(id);
+    }
+  );
 }
 
 // ─── Logs CRUD ───────────────────────────────────────────────
@@ -248,7 +346,13 @@ export async function deleteLog(id) {
 /** Dashboard helper: counts by status */
 export async function getColonyStats() {
   const all = await listColonies();
-  const byStatus = { queen_only: 0, founding: 0, established: 0 };
+  const byStatus = {
+    queen_only: 0,
+    eggs: 0,
+    first_workers: 0,
+    founding: 0,
+    established: 0,
+  };
   for (const c of all) {
     if (byStatus[c.status] !== undefined) byStatus[c.status] += 1;
   }
@@ -325,6 +429,20 @@ function optionalNumber(value, label, min, max) {
 
 /** Ultima lettura microclima disponibile per una colonia */
 export async function getLatestClimate(colonyId) {
+  const fromLab = await db.climate_logs
+    .where('[colony_id+date]')
+    .between([colonyId, Dexie.minKey], [colonyId, Dexie.maxKey])
+    .reverse()
+    .limit(1)
+    .first();
+  if (fromLab && hasAnyClimate(fromLab)) {
+    return {
+      nest_temp_c: fromLab.nest_temp_c,
+      nest_humidity_pct: fromLab.nest_humidity_pct,
+      arena_temp_c: fromLab.arena_temp_c,
+      arena_humidity_pct: fromLab.arena_humidity_pct,
+    };
+  }
   const rows = await listLogsByColony(colonyId, { limit: 100 });
   return rows.find((r) => r.climate && hasAnyClimate(r.climate))?.climate || null;
 }
@@ -340,7 +458,7 @@ function hasAnyClimate(c) {
 
 /** Categorie default per select Tracker Nutrizionale */
 export function getFeedingMenuCategories() {
-  return [FEEDING_MENU.carbohydrates, FEEDING_MENU.protein_liquid];
+  return [FEEDING_MENU.protein_liquid, FEEDING_MENU.carbohydrates];
 }
 
 /** @param {FeedingCategory} categoryId */
@@ -372,7 +490,8 @@ export function getFeedingQuickPicks() {
  * @param {string} [data.item_label]
  * @param {string} [data.date]
  * @param {string} [data.notes]
- * @param {number|null} [data.acceptance_rating] 1–5, tipico per protein_liquid
+ * @param {number|string|null} [data.acceptance_rating] 1–3 oppure 'low'|'medium'|'high'
+ * @param {AcceptanceLevel} [data.acceptance_level]
  */
 export async function createFeedingLog(data) {
   const colony = await getColony(data.colony_id);
@@ -386,27 +505,56 @@ export async function createFeedingLog(data) {
   const item_label = data.item_label || item?.label || data.item_id;
   if (!data.item_id) throw new Error('Seleziona un alimento');
 
-  let acceptance_rating = null;
-  if (category === 'protein_liquid') {
-    acceptance_rating = normalizeRating(data.acceptance_rating);
-    if (acceptance_rating == null) {
-      throw new Error('Valuta l’accettazione da 1 a 5 stelle per le formule proteiche');
-    }
+  const acceptance = resolveAcceptance(data.acceptance_level, data.acceptance_rating);
+  if (acceptance == null) {
+    throw new Error('Seleziona l’accettazione: Bassa, Media o Alta');
   }
 
   const now = new Date().toISOString();
-  const id = await db.feeding_logs.add({
-    colony_id: data.colony_id,
-    category,
-    category_label: FEEDING_MENU[category].label,
-    item_id: data.item_id,
-    item_label,
-    acceptance_rating,
-    notes: (data.notes || '').trim(),
-    date: data.date || now,
-    created_at: now,
+  const date = data.date || now;
+
+  let feedingId;
+  await db.transaction('rw', db.feeding_logs, db.logs, async () => {
+    feedingId = await db.feeding_logs.add({
+      colony_id: data.colony_id,
+      category,
+      category_label: FEEDING_MENU[category].label,
+      item_id: data.item_id,
+      item_label,
+      acceptance_level: acceptance.level,
+      acceptance_rating: acceptance.rating,
+      notes: (data.notes || '').trim(),
+      date,
+      created_at: now,
+    });
+
+    // Timeline automatica
+    await db.logs.add({
+      colony_id: data.colony_id,
+      log_type: 'observation',
+      date,
+      details: `Pasto: ${item_label} (${FEEDING_MENU[category].label}) · accettazione ${acceptance.label}`,
+      event_kind: 'feeding',
+      feeding_log_id: feedingId,
+      population: null,
+      climate: null,
+      feeding: null,
+      created_at: now,
+    });
   });
-  return getFeedingLog(id);
+
+  return getFeedingLog(feedingId);
+}
+
+function resolveAcceptance(level, rating) {
+  if (level) {
+    const row = ACCEPTANCE_LEVELS.find((a) => a.id === level);
+    if (row) return { level: row.id, rating: row.rating, label: row.label };
+  }
+  const n = normalizeRating(rating);
+  if (n == null) return null;
+  const row = ACCEPTANCE_LEVELS.find((a) => a.rating === n) || ACCEPTANCE_LEVELS[Math.min(2, Math.max(0, n - 1))];
+  return { level: row.id, rating: row.rating, label: row.label };
 }
 
 /** @param {number} id */
@@ -469,7 +617,59 @@ function normalizeRating(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 5) {
-    throw new Error('Il voto di accettazione deve essere tra 1 e 5');
+    throw new Error('Il voto di accettazione deve essere tra 1 e 3 (o legacy 1–5)');
   }
+  // Scala UI attuale: 1 Bassa, 2 Media, 3 Alta. Legacy 4–5 → Alta.
+  if (n >= 3) return 3;
   return n;
+}
+
+/**
+ * Timeline unificata: log Dexie (status, pasti, osservazioni) ordinati per data.
+ * @param {number} colonyId
+ * @param {{ limit?: number }} [opts]
+ */
+export async function listTimelineEvents(colonyId, opts = {}) {
+  const rows = await listLogsByColony(colonyId, { limit: opts.limit || 80 });
+  return rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    title: timelineTitle(r),
+    subtitle: timelineSubtitle(r),
+    event_kind: r.event_kind || r.log_type,
+    accent:
+      r.event_kind === 'status_change' ||
+      r.event_kind === 'feeding' ||
+      r.event_kind === 'biology' ||
+      r.event_kind === 'health',
+    raw: r,
+  }));
+}
+
+const EVENT_KIND_TITLES = {
+  status_change: null, // special
+  feeding: 'Pasto registrato',
+  biology: 'Censimento biologico',
+  climate: 'Lettura clima',
+  health: 'Salute',
+  reproduction: 'Riproduzione',
+  setup: 'Setup formicario',
+  field: 'Dati di campo',
+  media: 'Media',
+};
+
+function timelineTitle(log) {
+  if (log.event_kind === 'status_change') {
+    return `Stato: ${statusLabel(log.to_status) || 'aggiornato'}`;
+  }
+  if (log.event_kind && EVENT_KIND_TITLES[log.event_kind]) {
+    return EVENT_KIND_TITLES[log.event_kind];
+  }
+  if (log.log_type === 'growth') return 'Crescita / popolazione';
+  if (log.log_type === 'observation') return 'Osservazione';
+  return LOG_TYPES.find((t) => t.id === log.log_type)?.label || 'Evento';
+}
+
+function timelineSubtitle(log) {
+  return (log.details || '').trim() || '—';
 }

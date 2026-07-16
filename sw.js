@@ -2,14 +2,17 @@
  * Full offline caching will be wired when the app shell is complete.
  */
 
-const CACHE_NAME = 'antkeep-pro-v12-ios-oled';
+const CACHE_NAME = 'antkeep-pro-v14-lab';
 const PRECACHE = [
   './',
   './index.html',
   './css/styles.css',
-  './css/styles.css?v=ios2',
+  './css/theme-fieldlab.css',
+  './css/styles.css?v=lab1',
+  './css/theme-fieldlab.css?v=lab1',
   './js/app.js',
-  './js/app.js?v=ios2',
+  './js/app.js?v=lab1',
+  './js/modules/photos.js',
   './js/db.js',
   './js/data/advisor-species.js',
   './js/modules/theme.js',
@@ -18,6 +21,10 @@ const PRECACHE = [
   './js/modules/analytics.js',
   './js/modules/dashboard.js',
   './js/modules/colonies.js',
+  './js/modules/colony-detail-shell.js',
+  './js/modules/colony-lab.js',
+  './js/modules/lab-data.js',
+  './js/modules/export-csv.js',
   './js/modules/feeding.js',
   './js/modules/backup.js',
   './js/modules/settings.js',
